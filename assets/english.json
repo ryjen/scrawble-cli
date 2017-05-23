@@ -1,0 +1,72 @@
+{
+	"dictionary": "dictionaries/english.txt",
+	"tiles": [
+		{
+			"score": 0,
+			"letter_distributions": {
+				"?": 2
+			}
+		},
+		{
+			"score": 1,
+			"letter_distributions": {
+				"E": 12,
+				"A": 9,
+				"I": 9,
+				"O": 8,
+				"N": 6,
+				"R": 6,
+				"T": 6,
+				"L": 4,
+				"S": 4,
+				"U": 4
+			}
+		},
+		{
+			"score": 2,
+			"letter_distributions": {
+				"D": 4,
+				"G": 3
+			}
+		},
+		{
+			"score": 3,
+			"letter_distributions": {
+				"B": 2,
+				"C": 2,
+				"M": 2,
+				"P": 2
+			}
+		},
+		{
+			"score": 4,
+			"letter_distributions": {
+				"F": 2,
+				"H": 2,
+				"V": 2,
+				"W": 2,
+				"Y": 2
+			}
+		},
+		{
+			"score": 5,
+			"letter_distributions": {
+				"K": 1
+			}
+		},
+		{
+			"score": 8,
+			"letter_distributions": {
+				"J": 1,
+				"X": 1
+			}
+		},
+		{
+			"score": 10,
+			"letter_distributions": {
+				"Q": 1,
+				"Z": 1
+			}
+		}
+	]
+}
