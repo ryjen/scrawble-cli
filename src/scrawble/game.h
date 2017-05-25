@@ -2,7 +2,7 @@
 #define SCRAWBLE_GAME_H
 
 #include <curses.h>
-#include <scrawble/config.h>
+#include <scrawble/game_config.h>
 #include <scrawble/game_logic.h>
 #include <scrawble/io.h>
 #include <scrawble/tile.h>
@@ -44,7 +44,7 @@ namespace scrawble
 
         void init_dictionary(const std::string &fileName)
         {
-            file_reader reader(fileName);
+            file_reader reader(std::string(game_config::ASSETS_DIR) + fileName);
 
             for (auto line : reader) {
                 dictionary_.push(line);

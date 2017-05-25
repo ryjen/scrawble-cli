@@ -10,7 +10,7 @@ namespace scrawble
 
     void game_config::load(const std::string &filepath)
     {
-        file_reader input(filepath);
+        file_reader input(std::string(ASSETS_DIR) + filepath);
 
         auto j = input.to_json();
 

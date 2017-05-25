@@ -9,7 +9,8 @@ namespace scrawble
     class game_config : public config
     {
        public:
-        static constexpr const char *DEFAULT_CONFIG_FILE = "assets/english.json";
+        static constexpr const char *ASSETS_DIR = "assets/";
+        static constexpr const char *DEFAULT_CONFIG_FILE = "english.json";
 
         void load(const std::string &filepath);
 
