@@ -34,11 +34,15 @@ namespace scrawble
         void render_help();
         void render_select();
         void render_bonus_square(int bonus, int color) const;
+        void place_selection(board &board, const std::vector<tile> &rack);
+        lexicon::point translate_board(const lexicon::point &point) const;
+        int translate_rack(const lexicon::point &point) const;
 
         static const int FLAG_DIRTY = (1 << 0);
 
         lexicon::point pos_;
         int flags_;
+        lexicon::point selected_;
     };
 }
 
