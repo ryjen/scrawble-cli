@@ -5,3 +5,6 @@
 enter: select/place tile
 f: finish turn
 s: shuffle letters
+h: hints
+r: recall tiles
+b: go into background (resume with fg)

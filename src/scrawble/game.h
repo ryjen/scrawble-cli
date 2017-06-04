@@ -51,6 +51,15 @@ namespace scrawble
             }
         }
 
+        void init(const config &conf)
+        {
+            game_logic::init(conf);
+
+            for (int i = 0; i < rack::size; i++) {
+                player().push(bag().next());
+            }
+        }
+
        private:
         typedef enum { Running, Stopped } state_type;
 

@@ -6,6 +6,7 @@
 #include <scrawble/bag.h>
 #include <scrawble/board.h>
 #include <scrawble/game.h>
+#include <signal.h>
 #include <cstdlib>
 
 #define HIGHLIGHT 8
@@ -16,7 +17,7 @@
 
 #define PLAYER_RACK_ROW 32
 #define MIN_PLAYER_RACK_COLUMN 18
-#define MAX_PLAYER_RACK_COLUMN 39
+#define MAX_PLAYER_RACK_COLUMN 42
 #define MIN_BOARD_COLUMN 2
 #define MAX_BOARD_COLUMN 58
 #define MIN_BOARD_ROW 1
@@ -24,7 +25,7 @@
 
 namespace scrawble
 {
-    terminal_io::terminal_io() : pos_(MIN_PLAYER_RACK_COLUMN, PLAYER_RACK_ROW), flags_(FLAG_DIRTY), selected()
+    terminal_io::terminal_io() : pos_(MIN_PLAYER_RACK_COLUMN, PLAYER_RACK_ROW), flags_(FLAG_DIRTY), selected_()
     {
         timeout(-1);
         setlocale(LC_CTYPE, "");
@@ -46,8 +47,16 @@ namespace scrawble
     terminal_io::~terminal_io()
     {
         clear();
-
         endwin();
+    }
+
+    int terminal_io::current_score() const
+    {
+        int score = 0;
+        for (auto entry : moves_) {
+            score += entry.second.score();
+        }
+        return score;
     }
 
     void terminal_io::update(game &game)
@@ -63,7 +72,8 @@ namespace scrawble
 
         switch (ch) {
             case 'f':
-                game.finish_turn();
+                game.finish_turn(current_score());
+                moves_.clear();
                 flags_ |= FLAG_DIRTY;
                 break;
             case KEY_UP:
@@ -95,16 +105,23 @@ namespace scrawble
                 flags_ |= FLAG_DIRTY;
                 break;
             case KEY_ENTER:
+            case '\n':
                 if (!selected_.valid()) {
                     selected_ = pos_;
                 } else {
-                    place_selection(game.get_board());
+                    place_selection(game.board(), game.player());
                 }
                 flags_ |= FLAG_DIRTY;
                 break;
             case 's':
-                game.get_player().shuffle();
+                game.player().shuffle();
                 flags_ |= FLAG_DIRTY;
+                break;
+            case 'h':
+                render_hints(game);
+                break;
+            case 'b':
+                raise(SIGTSTP);
                 break;
             case 'q':
             case 'x':
@@ -123,9 +140,9 @@ namespace scrawble
 
         move(0, 0);
 
-        render(game.get_board());
+        render(game.board());
 
-        render(game.get_player());
+        render(game.player());
 
         render_help();
 
@@ -142,35 +159,62 @@ namespace scrawble
         }
     }
 
+    void terminal_io::render_hints(game &game)
+    {
+        int row = 13;
+        auto hints = game.hints();
+        int cols = hints.size() / 17 + 1;
+        int col = 66;
+        auto it = hints.begin();
+        for (int c = 0; c < cols && it != hints.end(); c++) {
+            int pos = 0;
+            while (it != hints.end()) {
+                mvprintw(row++, col, "%s", it->word().c_str());
+                ++it;
+                if (++pos == 17) {
+                    break;
+                }
+            }
+            row = 13;
+            col += 10;
+        }
+        move(pos_.y, pos_.x);
+    }
+
     void terminal_io::render_select()
     {
         if (selected_.valid()) {
             move(selected_.y, selected_.x);
-            chgat(1, 0, COLOR_PAIR(HIGHLIGHT), NULL);
+            chgat(1, A_BOLD, COLOR_PAIR(HIGHLIGHT), NULL);
         }
-
         move(pos_.y, pos_.x);
-        chgat(1, 0, COLOR_PAIR(HIGHLIGHT), NULL);
+        chgat(1, A_BOLD, COLOR_PAIR(HIGHLIGHT), NULL);
     }
 
     void terminal_io::render(player &player)
     {
+        auto select = translate_rack(selected_);
+        int index = 0;
         printw("                ╭───┬───┬───┬───┬───┬───┬───╮\n");
         printw("                ");
-
         for (auto tile : player.rack()) {
             printw("│ ");
-            attron(A_BOLD | COLOR_PAIR(COLOR_WHITE));
+            int attr = A_BOLD | COLOR_PAIR(COLOR_WHITE);
+            if (index++ == select) {
+                attr |= A_BLINK;
+            }
+            attron(attr);
             printw("%c ", tile.letter());
-            attroff(A_BOLD | COLOR_PAIR(COLOR_WHITE));
+            attroff(attr);
         }
         printw("│\n");
-
         printw("                ╰───┴───┴───┴───┴───┴───┴───╯\n");
     }
 
     void terminal_io::render(board &board)
     {
+        auto select = translate_board(selected_);
+
         for (int i = 0; i < board::size; i++) {
             if (i == 0) {
                 printw("╭───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───┬───╮\n");
@@ -179,7 +223,7 @@ namespace scrawble
             }
             for (int j = 0; j < board::size; j++) {
                 printw("│ ");
-                if (board.value(i, j) == lexicon::node::EMPTY) {
+                if (board.value(i, j).empty()) {
                     switch (board.bonus(i, j, true)) {
                         case 2:
                             render_bonus_square(2, COLOR_MAGENTA);
@@ -201,9 +245,13 @@ namespace scrawble
                             }
                     }
                 } else {
-                    attron(A_BOLD | COLOR_PAIR(COLOR_WHITE));
-                    printw("%c", board.value(i, j));
-                    attroff(A_BOLD | COLOR_PAIR(COLOR_WHITE));
+                    int attr = A_BOLD | COLOR_PAIR(COLOR_WHITE);
+                    if (select.x == j && select.y == i) {
+                        attr |= A_BLINK;
+                    }
+                    attron(attr);
+                    printw("%c", board.value(i, j).letter());
+                    attroff(attr);
                 }
                 printw(" ");
             }
@@ -212,7 +260,7 @@ namespace scrawble
         printw("╰───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───┴───╯\n");
     }
 
-    void terminal_io::place_selection(board &board, const std::vector<tile> &rack)
+    void terminal_io::place_selection(board &board, player &plr)
     {
         if (!selected_.valid()) {
             return;
@@ -220,34 +268,105 @@ namespace scrawble
 
         if (selected_.y == PLAYER_RACK_ROW) {
             if (pos_.y == PLAYER_RACK_ROW) {
-                place_selection_from_rack_to_rack(rack);
+                place_selection_from_rack_to_rack(plr);
             } else {
-                place_selection_from_rack_to_board(board, rack);
+                place_selection_from_rack_to_board(board, plr);
             }
         } else {
             if (pos_.y == PLAYER_RACK_ROW) {
-                place_selection_from_board_to_rack(board, rack);
+                place_selection_from_board_to_rack(board, plr);
             } else {
                 place_selection_from_board_to_board(board);
             }
         }
+
         selected_ = lexicon::point();
+    }
+
+    void terminal_io::place_selection_from_rack_to_rack(player &plr)
+    {
+        if (!selected_.valid()) {
+            return;
+        }
+
+        int index1 = translate_rack(selected_);
+
+        int index2 = translate_rack(pos_);
+
+        plr.swap(index2, index2);
+    }
+
+    void terminal_io::place_selection_from_rack_to_board(board &board, player &plr)
+    {
+        if (!selected_.valid()) {
+            return;
+        }
+
+        int index = translate_rack(selected_);
+
+        auto point = translate_board(pos_);
+
+        auto tile = plr.pop(index);
+
+        moves_[point] = tile;
+
+        tile = board.place(point.y, point.x, tile);
+
+        plr.replace(index, tile);
+    }
+
+    void terminal_io::place_selection_from_board_to_rack(board &board, player &plr)
+    {
+        if (!selected_.valid()) {
+            return;
+        }
+
+        auto point = translate_board(selected_);
+
+        int index = translate_rack(pos_);
+
+        auto tile = board.value(point.y, point.x);
+
+        tile = plr.replace(index, tile);
+
+        moves_[point] = tile;
+
+        board.place(point.y, point.x, tile);
+    }
+
+    void terminal_io::place_selection_from_board_to_board(board &board)
+    {
+        if (!selected_.valid()) {
+            return;
+        }
+
+        auto p1 = translate_board(selected_);
+        auto p2 = translate_board(pos_);
+
+        auto tile = board.value(p1.y, p1.x);
+
+        moves_[p2] = tile;
+
+        tile = board.place(p2.y, p2.x, tile);
+
+        moves_[p1] = tile;
+
+        board.place(p1.y, p1.x, tile);
     }
 
     lexicon::point terminal_io::translate_board(const lexicon::point &value) const
     {
         if (value.y > MAX_BOARD_ROW) {
-            return {};
+            return lexicon::point();
         }
-
-        return lexicon::point(value.x - MIN_BOARD_COLUMN / 4, value.y - MIN_BOARD_ROW / 2);
+        return lexicon::point((value.x - MIN_BOARD_COLUMN) / 4, (value.y - MIN_BOARD_ROW) / 2);
     }
 
     int terminal_io::translate_rack(const lexicon::point &value) const {
         if (value.y != PLAYER_RACK_ROW) {
-            return {}
+            return -1;
         }
-        return value.x - MIN_PLAYER_RACK_COLUMN / 4
+        return (value.x - MIN_PLAYER_RACK_COLUMN) / 4;
     }
 
     void terminal_io::render_bonus_square(int bonus, int color) const
