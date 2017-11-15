@@ -32,6 +32,7 @@ set(VENDOR_PATH ${CMAKE_CURRENT_LIST_DIR}/vendor)
 include_directories(src)
 
 # add directories
+add_subdirectory(assets)
 add_subdirectory(lib)
 add_subdirectory(src)
 add_subdirectory(tests)

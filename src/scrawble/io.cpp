@@ -25,7 +25,7 @@
 
 namespace scrawble
 {
-    terminal_io::terminal_io() : pos_(MIN_PLAYER_RACK_COLUMN, PLAYER_RACK_ROW), flags_(FLAG_DIRTY), selected_()
+    terminal_io::terminal_io() : pos_(MIN_PLAYER_RACK_COLUMN, PLAYER_RACK_ROW), selected_(), flags_(FLAG_DIRTY)
     {
         timeout(-1);
         setlocale(LC_CTYPE, "");
@@ -293,7 +293,7 @@ namespace scrawble
 
         int index2 = translate_rack(pos_);
 
-        plr.swap(index2, index2);
+        plr.swap(index1, index2);
     }
 
     void terminal_io::place_selection_from_rack_to_board(board &board, player &plr)
